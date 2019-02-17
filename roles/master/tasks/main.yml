@@ -1,0 +1,91 @@
+- name:
+  hostname:
+    name: "{{ inventory_hostname }}"
+  when: not inventory_hostname is match('(\d{1,3}\.){3}\d{1,3}|raspberrypi')
+  register: hostname
+
+# TODO: Is this necessary?
+- name: Initialize systemd tempfiles
+  file:
+    path: /var/log/journal
+    state: directory
+  register: init_tempfiles
+
+# TODO: Is this necessary?
+- name: Run systemd-tmpfiles
+  command: systemd-tmpfiles --create --prefix /var/log/journal
+  when: init_tempfiles is changed
+
+- name: Stop native networking service
+  systemd:
+    name: networking
+    masked: yes
+
+- name: Stop native dhcp service
+  systemd:
+    name: dhcpd
+    masked: yes
+
+# Remove network interfaces configuration
+- name: Native network interfaces file status
+  stat:
+    path: /etc/network/interfaces
+  register: interfaces_file
+
+- name: Isolate current network interfaces
+  copy:
+    src: /etc/network/interfaces
+    dest: /etc/network/interfaces~
+    remote_src: yes
+  when: interfaces_file.stat.exists
+  register: interfaces_copied
+
+- name: Remove old network interfaces file
+  file:
+    path: /etc/network/interfaces
+    state: absent
+  when: interfaces_copied is changed
+
+- name: Disable resolvconf
+  lineinfile:
+    line: '1i resolvconf=NO'
+    path: /etc/resolvconf.conf
+    create: yes
+
+# Enable systemd networkd
+- name: Enable networkd
+  systemd:
+    name: systemd-networkd
+    enabled: yes
+    state: started
+
+- name: Enable resolved
+  systemd:
+    name: systemd-resolved
+    enabled: yes
+    state: started
+
+# TODO: Is this necessary?
+- name: Symlink resolve service configuration
+  file:
+    src: /run/systemd/resolve/resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: yes
+
+- name: Configure cluster external ethernet service
+  copy:
+    src: eth0.network
+    dest: /etc/systemd/network/
+
+- name: Configure cluster external ethernet service
+  copy:
+    src: eth1.network
+    dest: /etc/systemd/network/
+  register: tasks_complete
+
+- name: Reboot as needed
+  reboot:
+    reboot_timeout: 3600
+  when: (tasks_complete is succeeded) or
+        (hostname is changed)

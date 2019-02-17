@@ -1,0 +1,5 @@
+[master]
+k8s_master    ansible_host=192.168.0.190
+
+[nodes]
+k8s_rpi01     ansible_host=10.0.0.96
