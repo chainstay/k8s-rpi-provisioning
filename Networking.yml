@@ -1,4 +1,5 @@
 - name: Configure software defined network on master node
   hosts: master
   roles:
+    - common
     - dhcp_server

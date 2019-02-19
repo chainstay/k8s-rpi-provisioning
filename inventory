@@ -2,4 +2,11 @@
 k8s_master    ansible_host=192.168.0.190
 
 [nodes]
-k8s_rpi01     ansible_host=10.0.0.96
+k8s_rpi01     ansible_host=10.0.0.101
+k8s_rpi02     ansible_host=10.0.0.104
+k8s_rpi03     ansible_host=10.0.0.105
+
+[all:vars]
+ansible_connection=ssh
+ansible_user=pi
+ansible_ssh_pass=raspberry
